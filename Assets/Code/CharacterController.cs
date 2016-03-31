@@ -9,6 +9,7 @@ public class CharacterController : MonoBehaviour
     public float _angularVelocity = 200f;
     public Animator _animator = null;
     public Rigidbody _rigid = null;
+    public AudioSource _audioSource = null;
 
     virtual protected void Update()
     {
@@ -29,6 +30,7 @@ public class CharacterController : MonoBehaviour
         _animator.SetFloat("Walking", vertical);
         _animator.SetFloat("Velocity", velocity);
         _animator.SetFloat("Steering", horizontal);
+        this._audioSource.volume = Mathf.Lerp(0, 1, velocity / (this._velocity * this._boostMultiplier));
     }
 
     protected void OnTriggerEnter(Collider collider)

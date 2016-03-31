@@ -10,6 +10,7 @@ public class AntiUnitychan : MonoBehaviour
     public GameObject _unitChanGhost = null;
     public NavMeshAgent _navMeshAgent = null;
     public Animator _animator = null;
+    public AudioSource _audioSource = null;
     public float _onPositionEpsilon = .5f;
     public float _randomPositionRange = 5f;
     public float _sightDistance = 30f;
@@ -83,6 +84,7 @@ public class AntiUnitychan : MonoBehaviour
         _animator.SetFloat("Velocity", this._navMeshAgent.velocity.magnitude);
         _animator.SetFloat("Steering", (this.transform.rotation.eulerAngles - this._lastRotation.eulerAngles).y);
         this._lastRotation = this.transform.rotation;
+        this._audioSource.volume = Mathf.SmoothStep(0, 1, Mathf.Min(this._navMeshAgent.velocity.magnitude, this._navMeshAgent.speed) / this._navMeshAgent.speed);
     }
 
     protected void ReachFinalTarget()
@@ -95,7 +97,7 @@ public class AntiUnitychan : MonoBehaviour
         Debug.Log("ON SIGHT");
         if (this._currentTargetPosition == this._lastPositionSeen)
         {
-            if (Time.time - this._lastTimeSeen >= this._timeToUpdateTargetPosition)
+            if (Time.time - this._lastTimeSeen >= this._timeToUpdateTargetPosition || this.OnTarget)
             {
                 Debug.Log("CHANGING A");
                 this.UpdateTargetPosition();
@@ -137,7 +139,7 @@ public class AntiUnitychan : MonoBehaviour
         float auxDistance = 0f;
         for (int i = 0; i < this._navPoints.Length; i++)
         {
-            if ((i != this._currentNavPointIndex) && (auxDistance = Vector3.Distance(this._lastPositionSeen, this._navPoints[i].transform.position)) < minDistance)
+            if ((i != this._currentNavPointIndex || !this.OnTarget) && (auxDistance = Vector3.Distance(this._lastPositionSeen, this._navPoints[i].transform.position)) < minDistance)
             {
                 minDistance = auxDistance;
                 indexOfNearst = i;
@@ -174,7 +176,7 @@ public class AntiUnitychan : MonoBehaviour
 
     protected void UpdateOnAlert()
     {
-        bool alert = Vector3.Distance(this._finalTarget.transform.position, this.transform.position) <= this._alertDistance;
+        bool alert = Vector3.Distance(this._finalTarget.transform.position, this.transform.position) <= Mathf.Max(this._alertDistance / 7, (this._alertDistance * this._finalTarget.GetComponent<AudioSource>().volume));
         if (alert && !this.OnAlert)
         {
             this._animator.SetTrigger("Alert");
@@ -195,9 +197,9 @@ public class AntiUnitychan : MonoBehaviour
         bool target = Vector3.Distance(this._navMeshAgent.destination, this.transform.position) <= 1;
         if (target && !this.OnTarget)
         {
-            this._animator.SetTrigger("ReachTarget");
             if (!this.IsTargetOnSight())
             {
+                this._animator.SetTrigger("ReachTarget");
                 this._navMeshAgent.Stop();
                 this.StartCoroutine(CallbackHelper.WaitForSecondsAndCall(3, () => this._navMeshAgent.Resume()));
             }
@@ -208,7 +210,7 @@ public class AntiUnitychan : MonoBehaviour
     protected void OnDrawGizmos()
     {
         Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(this.transform.position, this._alertDistance);
+        Gizmos.DrawWireSphere(this.transform.position, Mathf.Max(this._alertDistance / 7, (this._alertDistance * this._finalTarget.GetComponent<AudioSource>().volume)));
         Gizmos.color = Color.blue;
         Quaternion aux = this.transform.rotation;
         for (int i = 0; i < 180; i++)
