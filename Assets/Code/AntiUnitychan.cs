@@ -19,65 +19,38 @@ public class AntiUnitychan : MonoBehaviour
     protected int _currentNavPointIndex = -1;
     public int _sumToNavPointIndex = 1;
     public float _lastAlertTime = 0f;
-    public bool _alert = false;
     public Quaternion _lastRotation;
+    public Vector3 _currentTargetPosition;
 
-    public bool OnAlert
-    {
-        get
-        {
-            bool alert = (this.transform.position - this._finalTarget.transform.position).magnitude <= this._alertDistance;
-            if (alert && !this._alert)
-            {
-                this._animator.SetTrigger("Alert");
-                this.UpdateNavPointPositionToNearstPoint();
-            }
-            else if (!alert && this._alert)
-            {
-                this.FadeUnitichanGhost();
-            }
-            this._alert = alert;
-            return this._alert;
-        }
-    }
-    public bool OnTarget { get { return (Vector3.Distance(this._navMeshAgent.destination, this.transform.position) <= .1); } }
+    public bool OnAlert { get; set; }
+    public bool OnTarget { get; set; }
 
     public void Start()
     {
+        this._lastPositionSeen = this._finalTarget.transform.position;
         this.UpdateNavPointPosition();
     }
 
     protected void Update()
     {
         this.UpdateAnimation();
-        if (this.IsTargetOnSight())
-        {
-            this.UpdateRoutineOnSight();
-        }
-        else
-        {
-            this.UpdateRoutineOffSight();
-        }
+        this.UpdateOnAlert();
+        this.UpdateOnTarget();
+        this.UpdateNextTarget();
     }
 
-    protected void UpdateTargetPosition(bool playAnimation)
+    protected void UpdateTargetPosition()
     {
-        if (playAnimation)
-        {
-            this._animator.SetTrigger("ReachTarget");
-            this._navMeshAgent.Stop();
-            this.StartCoroutine(CallbackHelper.WaitForSecondsAndCall(2, () => this._navMeshAgent.Resume()));
-        }
         this._lastTimeSeen = Time.time;
         this._lastPositionSeen = this._finalTarget.transform.position;
         this._unitChanGhost.transform.position = this._lastPositionSeen;
         this._unitChanGhost.SetActive(true);
-        this._navMeshAgent.SetDestination(this._lastPositionSeen);
+        this._navMeshAgent.SetDestination(this._currentTargetPosition = this._lastPositionSeen);
     }
 
     protected void UpdateNavPointPosition()
     {
-        this._navMeshAgent.SetDestination(this.GetNextNavPoint().transform.position);
+        this._navMeshAgent.SetDestination(this._currentTargetPosition = this.GetNextNavPoint().transform.position);
     }
 
     protected bool IsTargetOnSight()
@@ -100,7 +73,6 @@ public class AntiUnitychan : MonoBehaviour
             this._sumToNavPointIndex = 1;
         }
         this._currentNavPointIndex += this._sumToNavPointIndex;
-        Debug.Log(this._currentNavPointIndex);
         return this._navPoints[this._currentNavPointIndex];
     }
 
@@ -117,48 +89,44 @@ public class AntiUnitychan : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
-    protected void UpdateRoutineOnSight()
+    protected void UpdateNextPositionOnSight()
     {
-        if (this._navMeshAgent.destination == this._lastPositionSeen)
+        Debug.Log("ON SIGHT");
+        if (this._currentTargetPosition == this._lastPositionSeen)
         {
-            if (Time.time - this._lastTimeSeen >= this._timeToUpdateTargetPosition || this.OnTarget)
+            if (Time.time - this._lastTimeSeen >= this._timeToUpdateTargetPosition)
             {
-                this.UpdateTargetPosition(true);
+                Debug.Log("CHANGING A");
+                this.UpdateTargetPosition();
             }
         }
         else
         {
-            this.UpdateTargetPosition(false);
+            Debug.Log("CHANGING B");
+            this.UpdateTargetPosition();
         }
     }
 
-    protected void UpdateRoutineOffSight()
+    protected void UpdateNextPositionOffSight()
     {
-        if (this.OnTarget)
+        if (this.OnAlert)
         {
-            if (this.OnAlert)
+            if (this.OnTarget)
             {
-                this._animator.SetTrigger("ReachTarget");
-                this._navMeshAgent.Stop();
                 this.UpdateNavPointPositionToNearstPoint();
-                this.StartCoroutine(CallbackHelper.WaitForSecondsAndCall(2, () => this._navMeshAgent.Resume()));
             }
-            else
-            {
-                this._animator.SetTrigger("ReachTarget");
-                this._navMeshAgent.Stop();
-                this.UpdateNavPointPosition();
-                this.StartCoroutine(CallbackHelper.WaitForSecondsAndCall(2, () => this._navMeshAgent.Resume()));
-            }
+        }
+        else if (this.OnTarget)
+        {
+            this.UpdateNavPointPosition();
         }
     }
 
     protected void UpdateNavPointPositionToNearstPoint()
     {
-        Vector3 position;
-        this._currentNavPointIndex = this.GetNearstNavPoint(out position);
-        this._navMeshAgent.SetDestination(position);
-        this._navMeshAgent.Resume();
+        Vector3 nearst;
+        this._currentNavPointIndex = this.GetNearstNavPoint(out nearst);
+        this._navMeshAgent.SetDestination(this._currentTargetPosition = nearst);
     }
 
     protected int GetNearstNavPoint(out Vector3 nearst)
@@ -168,7 +136,7 @@ public class AntiUnitychan : MonoBehaviour
         float auxDistance = 0f;
         for (int i = 0; i < this._navPoints.Length; i++)
         {
-            if ((this._navPoints[i].transform.position != this._navMeshAgent.destination) && (auxDistance = Vector3.Distance(this._lastPositionSeen, this._navPoints[i].transform.position)) < minDistance)
+            if ((i != this._currentNavPointIndex) && (auxDistance = Vector3.Distance(this._lastPositionSeen, this._navPoints[i].transform.position)) < minDistance)
             {
                 minDistance = auxDistance;
                 indexOfNearst = i;
@@ -189,5 +157,50 @@ public class AntiUnitychan : MonoBehaviour
     protected void FadeUnitichanGhost()
     {
         this._unitChanGhost.SetActive(false);
+    }
+
+    protected void UpdateNextTarget()
+    {
+        if (this.IsTargetOnSight())
+        {
+            this.UpdateNextPositionOnSight();
+        }
+        else
+        {
+            this.UpdateNextPositionOffSight();
+        }
+    }
+
+    protected void UpdateOnAlert()
+    {
+        bool alert = Vector3.Distance(this._finalTarget.transform.position, this.transform.position) <= this._alertDistance;
+        if (alert && !this.OnAlert)
+        {
+            this._animator.SetTrigger("Alert");
+            this._lastPositionSeen = this._finalTarget.transform.position;
+            this.UpdateNavPointPositionToNearstPoint();
+            this._navMeshAgent.Stop();
+            this.StartCoroutine(CallbackHelper.WaitForSecondsAndCall(3, () => this._navMeshAgent.Resume()));
+        }
+        else if (!alert && this.OnAlert)
+        {
+            this.FadeUnitichanGhost();
+        }
+        this.OnAlert = alert;
+    }
+
+    protected void UpdateOnTarget()
+    {
+        bool target = Vector3.Distance(this._navMeshAgent.destination, this.transform.position) <= 1;
+        if (target && !this.OnTarget)
+        {
+            this._animator.SetTrigger("ReachTarget");
+            if (!this.IsTargetOnSight())
+            {
+                this._navMeshAgent.Stop();
+                this.StartCoroutine(CallbackHelper.WaitForSecondsAndCall(3, () => this._navMeshAgent.Resume()));
+            }
+        }
+        this.OnTarget = target;
     }
 }
