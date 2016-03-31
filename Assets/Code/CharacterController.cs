@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using UnityEngine.SceneManagement;
 
 public class CharacterController : MonoBehaviour
 {
@@ -13,19 +14,14 @@ public class CharacterController : MonoBehaviour
     {
         float vertical = Input.GetAxis("Vertical");
         float horizontal = Input.GetAxis("Horizontal");
-        this.UpdateAnimation(horizontal, vertical, this._rigid.velocity.magnitude);
-    }
-
-    virtual protected void FixedUpdate()
-    {
-        float vertical = Input.GetAxis("Vertical");
-        float horizontal = Input.GetAxis("Horizontal");
-
-        float multiplier = this._angularVelocity * horizontal * (Input.GetButton("Boost") ? this._boostMultiplier : 1);
+        
+        float multiplier = this._angularVelocity * horizontal * (Input.GetButton("Boost") ? this._boostMultiplier : 1) * Time.deltaTime;
         this.transform.Rotate(Vector3.up * multiplier);
 
-        multiplier = this._velocity * vertical * (Input.GetButton("Boost") ? this._boostMultiplier : 1);
-        this._rigid.AddForce(this.transform.forward * multiplier / (this._rigid.velocity.magnitude + 0.1f), ForceMode.Impulse);
+        multiplier = this._velocity * vertical * (Input.GetButton("Boost") ? this._boostMultiplier : 1) * Time.deltaTime;
+        this.transform.position += this.transform.forward * multiplier;
+
+        this.UpdateAnimation(horizontal, vertical, multiplier / Time.deltaTime);
     }
 
     virtual protected void UpdateAnimation(float horizontal, float vertical, float velocity)
@@ -33,5 +29,13 @@ public class CharacterController : MonoBehaviour
         _animator.SetFloat("Walking", vertical);
         _animator.SetFloat("Velocity", velocity);
         _animator.SetFloat("Steering", horizontal);
+    }
+
+    protected void OnTriggerEnter(Collider collider)
+    {
+        if (collider.gameObject.name == "FinishPoint")
+        {
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        }
     }
 }
