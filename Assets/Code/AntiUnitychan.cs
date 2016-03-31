@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
 
 public class AntiUnitychan : MonoBehaviour
 {
@@ -202,5 +203,35 @@ public class AntiUnitychan : MonoBehaviour
             }
         }
         this.OnTarget = target;
+    }
+
+    protected void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(this.transform.position, this._alertDistance);
+        Gizmos.color = Color.blue;
+        Quaternion aux = this.transform.rotation;
+        for (int i = 0; i < 180; i++)
+        {
+            RaycastHit ray;
+            Vector3 directionA = Vector3.RotateTowards(this.transform.forward, this.transform.right, Mathf.Deg2Rad * i, 1);
+            Vector3 directionB = Vector3.RotateTowards(this.transform.forward, -this.transform.right, Mathf.Deg2Rad * i, 1);
+            if (Physics.Raycast(this.transform.position, directionA, out ray, this._sightDistance))
+            {
+                Gizmos.DrawLine(this.transform.position, this.transform.position+directionA * ray.distance);
+            }
+            else
+            {
+                Gizmos.DrawLine(this.transform.position, this.transform.position+directionA * this._sightDistance);
+            }
+            if (Physics.Raycast(this.transform.position, directionB, out ray, this._sightDistance))
+            {
+                Gizmos.DrawLine(this.transform.position, this.transform.position + directionB * ray.distance);
+            }
+            else
+            {
+                Gizmos.DrawLine(this.transform.position, this.transform.position+directionB * this._sightDistance);
+            }
+        }
     }
 }
