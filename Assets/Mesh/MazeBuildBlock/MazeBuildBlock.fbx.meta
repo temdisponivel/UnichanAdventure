@@ -12,6 +12,8 @@ ModelImporter:
     100008: MazeBuildBlockToken
     100010: MazeBuildBlockWithCeilling
     100012: MazeBuildBock
+    100014: Camera
+    100016: Lamp
     400000: Cube
     400002: Cube.001
     400004: Cube.002
@@ -19,6 +21,8 @@ ModelImporter:
     400008: MazeBuildBlockToken
     400010: MazeBuildBlockWithCeilling
     400012: MazeBuildBock
+    400014: Camera
+    400016: Lamp
     2300000: Cube
     2300002: Cube.001
     2300004: Cube.002
